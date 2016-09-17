@@ -1,0 +1,62 @@
+此例（DCLP）模型如下：
+Singleton* Singleton::instance () 
+{
+  if (pInstance == 0) 
+  {
+    Lock lock;
+    if (pInstance == 0) 
+    {
+      pInstance = new Singleton;
+    }
+  }
+  return tmp;
+}
+
+DCLP在C++11之前以及早期的java中，由于内存模型(memory model)的问题。
+彼时的语言还没有线程的概念，编译器在处理指令时，会为了效率执行乱序写out-of-order write
+一般的编译器会把m_instance = new Singleton;分为三步
+1. 先申请一块空内存
+2. 在 instance 所指的地址之上构建对象
+3. 将其地址赋予 instance 
+部分编译器会优化，把顺序改为1、3、2；这样假如thread1执行了1、3，thread2判断m_instance非空，
+取出了一个未构建的对象指针,出错！！
+
+如果线程调度发生在 instance 已经被赋予一个内存地址，而 Singleton 的构造函数还没有被调用的微妙时刻，
+那么另一个进入此函数的线程会发觉 instance 已经不为 null ，从而放心大胆的将 instance 返回并使用之。
+但是这个可怜的线程并不知道此时 instance 还没有被初始化呢！
+症结在于：首先，构造一个对象不是原子操作，而是可以被打断的；
+第二，更重要的，Java 允许在初始化之前就把对象的地址写回，这就是所谓 out-of-order 。
+
+在C++11中，当变量初始化的时候，他总是原子的，可以采用如下的方式
+static T& getInstance()
+　　{
+　　static T value;
+　　return value;
+　　}
+采用这种方式无需考虑垃圾释放的问题，静态变量会在程序结束时析构。
+采用这种办法最方便。
+
+对于低于C++11的情况，需要使用内存屏障实现此功能
+Singleton* Singleton::instance () 
+{
+  Singleton* tmp = pInstance;
+  ... // insert memory barrier
+  if (tmp == 0) 
+  {
+    Lock lock;
+    tmp = pInstance;
+    if (tmp == 0) 
+    {
+      tmp = new Singleton;
+      ... // insert memory barrier
+      pInstance = tmp;
+    }
+  }
+  return tmp;
+}
+
+
+http://www.cs.umd.edu/~pugh/java/memoryModel/DoubleCheckedLocking.html
+http://blog.csdn.net/hanchengxi/article/details/39830347
+http://www.codeweblog.com/%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F%E4%B9%8B%E5%8D%95%E4%BE%8B%E6%A8%A1%E5%BC%8F-singleton/
+http://blog.sina.com.cn/s/blog_69553ee40102wixi.html
