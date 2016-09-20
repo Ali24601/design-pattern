@@ -1,0 +1,87 @@
+#ifndef _MEMENTO_H
+#define _MEMENTO_H
+#include <iostream>
+#include <string>
+using namespace std;
+
+typedef string State;
+
+class Memento
+{
+public:
+	~Memento();
+private:
+	friend class Originator;
+	Memento(State s) {
+		this->state = s;
+	}
+	void SetState(State s) {
+		this->state = s;
+	}
+	State GetState() {
+		return state;
+	}
+	State state;
+};
+
+class Originator
+{
+public:
+	Originator(State s) {
+		this->state = s;
+	}
+	void ChangeState(State s) {
+		this->state = s;
+	}
+	Memento* CreateMemento() {
+		cout << typeid(*this).name() << ": Create Memento..........." << endl;
+		return new Memento(this->state);
+	}
+	void RestoreMemento(Memento* mem) {
+		cout << typeid(*this).name() << ": Restore Memento..........." << endl;
+		this->state = mem->GetState();
+	}
+	void ShowState(string str) {
+		cout << str + "\n\tstate: " + state << endl;
+	}
+private:
+	State state;
+};
+
+class CareTaker
+{
+private:
+	Memento* mem;
+public:
+	CareTaker() :mem(NULL) {}
+	void SaveMemento(Memento* m) {
+		cout << typeid(*this).name() << ": Save Memento..........." << endl;
+		mem = m;
+	}
+	Memento* GetMemento() {
+		return mem;
+	}
+};
+
+#endif //_MEMENTO_H
+
+int main()
+{
+	Originator *o = new Originator("start state.");
+	CareTaker *c = new CareTaker();
+
+	//show init state 
+	o->ShowState("before change:");
+
+	//save state
+	c->SaveMemento(o->CreateMemento());
+
+	//change state
+	o->ChangeState("changed state.");
+	o->ShowState("after changed:");
+
+	//restore state
+	o->RestoreMemento(c->GetMemento());
+	o->ShowState("restored state:");
+	system("pause");
+}
