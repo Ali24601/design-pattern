@@ -1,0 +1,104 @@
+#include<iostream>
+#include<string>
+#include<vector>
+using namespace std;
+class Command
+{
+public:
+	virtual ~Command()=default;
+	virtual void Execute()=0;
+protected:
+	Command()=default;
+};
+
+template<typename Receiver>
+class SimpleCommand :public Command
+{
+public:
+	typedef void (Receiver::* Action)();
+	SimpleCommand(Receiver *r,Action a):_receiver(r),_action(a)
+	{
+		std::cout << "SET A COMMAND:" << std::endl;
+		std::cout << "Receiver: " << typeid(*_receiver).name()<< std::endl;
+		std::cout << std::endl;
+	}
+	virtual void Execute();
+private:
+	Receiver *_receiver;
+	Action _action;
+};
+
+template<typename Receiver>
+void SimpleCommand<Receiver>::Execute()
+{
+	(_receiver->*_action)();
+}
+
+class Document
+{
+public:
+	Document(std::string name=""):docname(name)
+	{
+		std::cout << "CREATE DOCUMENT:" << docname << endl;
+		std::cout << docname << std::endl;
+		std::cout << std::endl;
+	}
+	void Open()
+	{
+		std::cout << "OPEN DOCUMENT" << std::endl;
+	}
+	void Close()
+	{
+		std::cout << "CLOSE DOCUMENT" << std::endl;
+	}
+	void Cut()
+	{
+		std::cout << "CUT DOCUMENT" << std::endl;
+	}
+	void Copy()
+	{
+		std::cout << "COPY DOCUMENT" << std::endl;
+	}
+	void Paste()
+	{
+		std::cout << "PASTE DOCUMENT" << std::endl;
+	}
+private:
+	std::string docname;
+};
+
+class Invoker
+{
+public:
+	void StoreCommand(Command *command)
+	{
+		std::cout << "INVOKER" <<"::"<< "STORECOMMAND"<< std::endl;
+		if (_command != NULL)
+		{
+			std::cout << "DELETE OLD COMMAND" << std::endl;
+			delete _command;
+		}
+		_command = command;
+		std::cout << "BIND COMMAND:" << typeid(*_command).name() << " To "<<typeid(*this).name()<<std::endl;
+		std::cout << std::endl;
+	}
+	~Invoker()
+	{
+		delete _command;
+		_command = NULL;
+	}
+	void Execute()
+	{
+		_command->Execute();
+	}
+private:
+	Command *_command=NULL;
+};
+int main()
+{
+	Invoker invoker;
+	Document document("DOCUMENT1");
+	invoker.StoreCommand(new SimpleCommand<Document>(&document, &Document::Open));
+	invoker.Execute();
+	return 0;
+}
